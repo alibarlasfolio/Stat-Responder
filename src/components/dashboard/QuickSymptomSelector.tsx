@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
@@ -309,17 +309,19 @@ export default function QuickSymptomSelector() {
             <p className="text-xs text-green-600">Voice message recorded and ready.</p>
           )}
         </div>
+
+        {/* Submit Button Section */}
+        <div className="pt-4 border-t border-border">
+          <Button 
+            onClick={handleSubmitToServices} 
+            disabled={!selectedSymptom || isFetchingGuidance || isRecording || isSubmitting} 
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
+            {isSubmitting ? 'Submitting...' : 'Submit Information (Simulated)'}
+          </Button>
+        </div>
       </CardContent>
-      <CardFooter className="border-t border-border pt-4">
-        <Button 
-          onClick={handleSubmitToServices} 
-          disabled={!selectedSymptom || isFetchingGuidance || isRecording || isSubmitting} 
-          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="mr-2 h-5 w-5" />}
-          {isSubmitting ? 'Submitting...' : 'Submit Information (Simulated)'}
-        </Button>
-      </CardFooter>
     </Card>
   );
 }
