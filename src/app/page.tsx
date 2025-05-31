@@ -1,8 +1,10 @@
+
 import EmergencyContactsSummary from '@/components/dashboard/EmergencyContactsSummary';
 import MedicalInfoSummary from '@/components/dashboard/MedicalInfoSummary';
 import SosButton from '@/components/dashboard/SosButton';
 import EmergencyLists from '@/components/dashboard/EmergencyLists';
 import SosPreparedness from '@/components/dashboard/SosPreparedness';
+import QuickSymptomSelector from '@/components/dashboard/QuickSymptomSelector';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AlertTriangle } from 'lucide-react';
 
@@ -20,12 +22,13 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-        <div className="md:col-span-1">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start"> {/* Changed items-center to items-start */}
+        <div className="md:col-span-1 space-y-4"> {/* Added space-y-4 */}
           <SosButton />
+          <QuickSymptomSelector />
         </div>
         <div className="md:col-span-2">
-          <Card className="border-destructive bg-destructive/10 p-4 shadow-md">
+          <Card className="border-destructive bg-destructive/10 p-4 shadow-md h-full"> {/* Added h-full for alignment if needed */}
             <CardHeader className="p-0">
                <CardTitle className="text-destructive flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5" /> Important
