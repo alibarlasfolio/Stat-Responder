@@ -2,7 +2,6 @@
 import EmergencyContactsSummary from '@/components/dashboard/EmergencyContactsSummary';
 import MedicalInfoSummary from '@/components/dashboard/MedicalInfoSummary';
 import SosButton from '@/components/dashboard/SosButton';
-import EmergencyLists from '@/components/dashboard/EmergencyLists';
 import SosPreparedness from '@/components/dashboard/SosPreparedness';
 import QuickSymptomSelector from '@/components/dashboard/QuickSymptomSelector';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -49,9 +48,8 @@ export default function DashboardPage() {
       </div>
       
       <SosPreparedness />
-
-      <EmergencyLists />
       
     </div>
   );
 }
+

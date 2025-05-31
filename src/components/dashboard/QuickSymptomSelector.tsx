@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
-import { ClipboardList, Lightbulb, AlertTriangle, Mic, StopCircle, Loader2, Send, MessageSquareWarning, MapPin, Users, HeartPulse as HeartPulseIcon } from 'lucide-react';
+import { ClipboardList, Lightbulb, AlertTriangle, Mic, StopCircle, Loader2, Send, MessageSquareWarning, Hospital, Ambulance, PhoneCall } from 'lucide-react';
 import { getSymptomGuidance, type SymptomGuidanceOutput } from '@/ai/flows/symptom-guidance-flow';
 import { useToast } from '@/hooks/use-toast';
 import { useUserData } from '@/context/UserDataContext';
@@ -35,6 +35,19 @@ const commonSymptoms = [
   "Broken Bone / Fracture"
 ];
 
+const hospitals = [
+  { name: 'City General Hospital', number: '555-0101' },
+  { name: 'County Medical Center', number: '555-0102' },
+  { name: 'St. Luke\'s Emergency', number: '555-0103' },
+  { name: 'Community Health Clinic (24h)', number: '555-0104' },
+];
+
+const ambulanceServices = [
+  { name: 'Citywide Ambulance', number: '555-0201' },
+  { name: 'Rapid Response EMS', number: '555-0202' },
+  { name: 'County Paramedics', number: '555-0203' },
+];
+
 const RECORDING_DURATION_MS = 240000; // 4 minutes
 
 export default function QuickSymptomSelector() {
@@ -55,6 +68,9 @@ export default function QuickSymptomSelector() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<UserLocation | null>(null);
   const [locationErrorSubmit, setLocationErrorSubmit] = useState<string | null>(null);
+
+  const [selectedHospitalNumber, setSelectedHospitalNumber] = useState<string | null>(null);
+  const [selectedAmbulanceNumber, setSelectedAmbulanceNumber] = useState<string | null>(null);
 
 
   const { toast } = useToast();
@@ -171,6 +187,12 @@ export default function QuickSymptomSelector() {
     });
   };
 
+  const handleCall = (number: string | null) => {
+    if (number) {
+      window.location.href = `tel:${number}`;
+    }
+  };
+
   const handleSubmitToServices = async () => {
     if (!selectedSymptom) {
       toast({ variant: "destructive", title: "Symptom Required", description: "Please select a symptom first." });
@@ -189,6 +211,16 @@ export default function QuickSymptomSelector() {
     } else {
       submissionDetails += `Location: Not available.\n`;
     }
+
+    if (selectedHospitalNumber) {
+        const hospitalName = hospitals.find(h => h.number === selectedHospitalNumber)?.name || selectedHospitalNumber;
+        submissionDetails += `Selected Hospital for contact: ${hospitalName}\n`;
+    }
+    if (selectedAmbulanceNumber) {
+        const ambulanceName = ambulanceServices.find(a => a.number === selectedAmbulanceNumber)?.name || selectedAmbulanceNumber;
+        submissionDetails += `Selected Ambulance Service for contact: ${ambulanceName}\n`;
+    }
+
 
     submissionDetails += `\n--- Medical Information ---\n`;
     if (medicalInfo) {
@@ -235,7 +267,7 @@ export default function QuickSymptomSelector() {
           Symptom Checker & Reporter
         </CardTitle>
         <CardDescription className="text-xs pt-1">
-          Select symptom for AI advice, optionally record voice, and simulate sending info.
+          Select symptom for AI advice, record voice, contact services, and simulate sending info.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -309,6 +341,60 @@ export default function QuickSymptomSelector() {
             <p className="text-xs text-green-600">Voice message recorded and ready.</p>
           )}
         </div>
+        
+        {/* Emergency Services Contact Section */}
+        <div className="space-y-4 pt-3 border-t border-border">
+          <h4 className="text-md font-semibold text-primary flex items-center gap-2">
+            <PhoneCall className="h-5 w-5"/> Connect with Local Services
+          </h4>
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="hospital-select" className="text-sm font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Hospital className="h-4 w-4"/> Nearby Hospitals
+              </label>
+              <Select onValueChange={setSelectedHospitalNumber} value={selectedHospitalNumber || undefined} disabled={isSubmitting}>
+                <SelectTrigger id="hospital-select" className="w-full">
+                  <SelectValue placeholder="Select a hospital..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {hospitals.map(hospital => (
+                    <SelectItem key={hospital.name} value={hospital.number}>
+                      {hospital.name} ({hospital.number})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedHospitalNumber && (
+                <Button onClick={() => handleCall(selectedHospitalNumber)} className="w-full mt-2 bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSubmitting}>
+                  <PhoneCall className="mr-2 h-4 w-4" /> Call Selected Hospital
+                </Button>
+              )}
+            </div>
+            <div>
+              <label htmlFor="ambulance-select" className="text-sm font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                <Ambulance className="h-4 w-4"/> Ambulance Services
+              </label>
+              <Select onValueChange={setSelectedAmbulanceNumber} value={selectedAmbulanceNumber || undefined} disabled={isSubmitting}>
+                <SelectTrigger id="ambulance-select" className="w-full">
+                  <SelectValue placeholder="Select an ambulance service..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {ambulanceServices.map(service => (
+                    <SelectItem key={service.name} value={service.number}>
+                      {service.name} ({service.number})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedAmbulanceNumber && (
+                <Button onClick={() => handleCall(selectedAmbulanceNumber)} className="w-full mt-2 bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSubmitting}>
+                  <PhoneCall className="mr-2 h-4 w-4" /> Call Selected Ambulance
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
 
         {/* Submit Button Section */}
         <div className="pt-4 border-t border-border">
