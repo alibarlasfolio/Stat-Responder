@@ -128,15 +128,17 @@ export default function SosButton() {
           <AlertDialogTitle className="flex items-center gap-2 text-destructive">
             <Siren className="h-6 w-6"/> Confirm SOS Activation
           </AlertDialogTitle>
-          <AlertDialogDescription>
-            This will initiate emergency procedures:
-            <ul className="list-disc list-inside mt-2 text-sm text-muted-foreground space-y-1">
-              <li>Attempt to share your current location.</li>
-              <li>Notify your primary emergency contact (if set).</li>
-              <li>(Simulated) Alert nearest hospital.</li>
-              <li>Prompt a call to emergency services ({EMERGENCY_PHONE_NUMBER}).</li>
-            </ul>
-            Are you sure you want to proceed?
+          <AlertDialogDescription asChild>
+            <div>
+              <p>This will initiate emergency procedures:</p>
+              <ul className="list-disc list-inside mt-2 text-sm text-muted-foreground space-y-1">
+                <li>Attempt to share your current location.</li>
+                <li>Notify your primary emergency contact (if set).</li>
+                <li>(Simulated) Alert nearest hospital.</li>
+                <li>Prompt a call to emergency services ({EMERGENCY_PHONE_NUMBER}).</li>
+              </ul>
+              <p className="mt-2">Are you sure you want to proceed?</p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -153,4 +155,3 @@ export default function SosButton() {
 // Dummy icons for toast, replace with actual lucide-react if needed
 const Users = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
 const HeartPulse = ({ className }: { className?: string }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/><path d="M12 14v6"/><path d="M12 4v2"/></svg>;
-
