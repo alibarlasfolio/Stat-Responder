@@ -3,15 +3,19 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { EmergencyContact, MedicalInfo } from '@/types';
-import { getEmergencyContacts as getContactsFromStorage, saveEmergencyContacts as saveContactsToStorage, getMedicalInfo as getMedicalFromStorage, saveMedicalInfo as saveMedicalToStorage } from '@/lib/storage';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+
+// Hardcoded user for demonstration purposes. In a real app, this would be dynamic.
+const USER_ID = 'default-user';
 
 interface UserDataContextType {
   emergencyContacts: EmergencyContact[];
   medicalInfo: MedicalInfo | null;
-  addEmergencyContact: (contact: Omit<EmergencyContact, 'id'>) => void;
-  updateEmergencyContact: (contact: EmergencyContact) => void;
-  deleteEmergencyContact: (id: string) => void;
-  updateMedicalInfo: (info: MedicalInfo) => void;
+  addEmergencyContact: (contact: Omit<EmergencyContact, 'id'>) => Promise<void>;
+  updateEmergencyContact: (contact: EmergencyContact) => Promise<void>;
+  deleteEmergencyContact: (id: string) => Promise<void>;
+  updateMedicalInfo: (info: MedicalInfo) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -23,39 +27,66 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setEmergencyContacts(getContactsFromStorage());
-    setMedicalInfo(getMedicalFromStorage());
-    setIsLoading(false);
+    const fetchData = async () => {
+      setIsLoading(true);
+      const userDocRef = doc(db, 'users', USER_ID);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const data = userDocSnap.data();
+        setEmergencyContacts(data.emergencyContacts || []);
+        setMedicalInfo(data.medicalInfo || null);
+      } else {
+        // If no document exists, create one with default empty values
+        await setDoc(userDocRef, { emergencyContacts: [], medicalInfo: null });
+        setEmergencyContacts([]);
+        setMedicalInfo(null);
+      }
+      setIsLoading(false);
+    };
+
+    fetchData();
   }, []);
 
-  const addEmergencyContact = useCallback((contact: Omit<EmergencyContact, 'id'>) => {
+  const addEmergencyContact = useCallback(async (contact: Omit<EmergencyContact, 'id'>) => {
     const newContact = { ...contact, id: Date.now().toString() };
-    setEmergencyContacts(prev => {
-      const updated = [...prev, newContact];
-      saveContactsToStorage(updated);
-      return updated;
+    const userDocRef = doc(db, 'users', USER_ID);
+    await updateDoc(userDocRef, {
+      emergencyContacts: arrayUnion(newContact)
     });
+    setEmergencyContacts(prev => [...prev, newContact]);
   }, []);
 
-  const updateEmergencyContact = useCallback((updatedContact: EmergencyContact) => {
-    setEmergencyContacts(prev => {
-      const updated = prev.map(c => c.id === updatedContact.id ? updatedContact : c);
-      saveContactsToStorage(updated);
-      return updated;
-    });
+  const updateEmergencyContact = useCallback(async (updatedContact: EmergencyContact) => {
+    const userDocRef = doc(db, 'users', USER_ID);
+    const userDocSnap = await getDoc(userDocRef);
+    if (userDocSnap.exists()) {
+      const currentContacts = userDocSnap.data().emergencyContacts || [];
+      const updatedContacts = currentContacts.map((c: EmergencyContact) => c.id === updatedContact.id ? updatedContact : c);
+      await setDoc(userDocRef, { emergencyContacts: updatedContacts }, { merge: true });
+      setEmergencyContacts(updatedContacts);
+    }
   }, []);
 
-  const deleteEmergencyContact = useCallback((id: string) => {
-    setEmergencyContacts(prev => {
-      const updated = prev.filter(c => c.id !== id);
-      saveContactsToStorage(updated);
-      return updated;
-    });
+  const deleteEmergencyContact = useCallback(async (id: string) => {
+    const userDocRef = doc(db, 'users', USER_ID);
+    const userDocSnap = await getDoc(userDocRef);
+     if (userDocSnap.exists()) {
+      const currentContacts = userDocSnap.data().emergencyContacts || [];
+      const contactToDelete = currentContacts.find((c: EmergencyContact) => c.id === id);
+      if(contactToDelete) {
+        await updateDoc(userDocRef, {
+            emergencyContacts: arrayRemove(contactToDelete)
+        });
+        setEmergencyContacts(prev => prev.filter(c => c.id !== id));
+      }
+    }
   }, []);
 
-  const updateMedicalInfo = useCallback((info: MedicalInfo) => {
+  const updateMedicalInfo = useCallback(async (info: MedicalInfo) => {
+    const userDocRef = doc(db, 'users', USER_ID);
+    await setDoc(userDocRef, { medicalInfo: info }, { merge: true });
     setMedicalInfo(info);
-    saveMedicalToStorage(info);
   }, []);
 
   return (
