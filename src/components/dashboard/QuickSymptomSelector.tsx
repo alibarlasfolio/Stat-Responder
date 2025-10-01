@@ -1,13 +1,14 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
 import { ClipboardList, Lightbulb, AlertTriangle, Mic, StopCircle, Loader2, Send, MessageSquareWarning, Hospital, Ambulance, PhoneCall } from 'lucide-react';
 import { getSymptomGuidance, type SymptomGuidanceOutput } from '@/ai/flows/symptom-guidance-flow';
+import { getNearbyHospitals, type Hospital as HospitalType } from '@/ai/flows/nearby-hospitals-flow';
 import { useToast } from '@/hooks/use-toast';
 import { useUserData } from '@/context/UserDataContext';
 import type { UserLocation } from '@/types';
@@ -35,13 +36,6 @@ const commonSymptoms = [
   "Broken Bone / Fracture"
 ];
 
-const hospitals = [
-  { name: 'City General Hospital', number: '555-0101' },
-  { name: 'County Medical Center', number: '555-0102' },
-  { name: 'St. Luke\'s Emergency', number: '555-0103' },
-  { name: 'Community Health Clinic (24h)', number: '555-0104' },
-];
-
 const ambulanceServices = [
   { name: 'Citywide Ambulance', number: '555-0201' },
   { name: 'Rapid Response EMS', number: '555-0202' },
@@ -67,14 +61,58 @@ export default function QuickSymptomSelector() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<UserLocation | null>(null);
-  const [locationErrorSubmit, setLocationErrorSubmit] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
-  const [selectedHospitalNumber, setSelectedHospitalNumber] = useState<string | null>(null);
+  const [hospitals, setHospitals] = useState<HospitalType[]>([]);
+  const [isFetchingHospitals, setIsFetchingHospitals] = useState(false);
+  const [selectedHospitalId, setSelectedHospitalId] = useState<string | null>(null);
   const [selectedAmbulanceNumber, setSelectedAmbulanceNumber] = useState<string | null>(null);
 
 
   const { toast } = useToast();
   const { medicalInfo, emergencyContacts } = useUserData();
+
+  const fetchHospitals = useCallback(async (location: UserLocation) => {
+    setIsFetchingHospitals(true);
+    try {
+      const result = await getNearbyHospitals({
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+      setHospitals(result.hospitals);
+      if (result.hospitals.length === 0) {
+        toast({ variant: "default", title: "Nearby Hospitals", description: "No hospitals found within a 30km radius." });
+      }
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Hospital Search Error", description: `Could not fetch hospitals: ${e.message}` });
+    } finally {
+      setIsFetchingHospitals(false);
+    }
+  }, [toast]);
+
+
+  const fetchLocation = useCallback(() => {
+    if (!('geolocation' in navigator)) {
+      setLocationError('Geolocation is not supported.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const loc = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+        setCurrentLocation(loc);
+        setLocationError(null);
+        fetchHospitals(loc); 
+      },
+      (error) => {
+        setLocationError(`Location error: ${error.message}`);
+        setCurrentLocation(null);
+      }
+    );
+  }, [fetchHospitals]);
+
+  useEffect(() => {
+    fetchLocation();
+  }, [fetchLocation]);
 
   useEffect(() => {
     return () => {
@@ -164,28 +202,6 @@ export default function QuickSymptomSelector() {
   
   const recordingProgress = ((RECORDING_DURATION_MS / 1000 - recordingTimeLeft) / (RECORDING_DURATION_MS / 1000)) * 100;
 
-  const fetchLocationForSubmit = (): Promise<UserLocation | null> => {
-    return new Promise((resolve) => {
-      if (!('geolocation' in navigator)) {
-        setLocationErrorSubmit('Geolocation is not supported.');
-        resolve(null);
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const loc = { latitude: position.coords.latitude, longitude: position.coords.longitude };
-          setCurrentLocation(loc);
-          setLocationErrorSubmit(null);
-          resolve(loc);
-        },
-        (error) => {
-          setLocationErrorSubmit(`Location error: ${error.message}`);
-          setCurrentLocation(null);
-          resolve(null);
-        }
-      );
-    });
-  };
 
   const handleCall = (number: string | null) => {
     if (number) {
@@ -199,21 +215,20 @@ export default function QuickSymptomSelector() {
       return;
     }
     setIsSubmitting(true);
-    const location = await fetchLocationForSubmit();
 
     let submissionDetails = `SIMULATED EMERGENCY SUBMISSION:\n-----------------------------------\n`;
     submissionDetails += `Selected Symptom: ${selectedSymptom}\n`;
 
-    if (location) {
-      submissionDetails += `Location: Lat ${location.latitude.toFixed(4)}, Lon ${location.longitude.toFixed(4)}\n`;
-    } else if (locationErrorSubmit) {
-      submissionDetails += `Location: Could not be determined (${locationErrorSubmit})\n`;
+    if (currentLocation) {
+      submissionDetails += `Location: Lat ${currentLocation.latitude.toFixed(4)}, Lon ${currentLocation.longitude.toFixed(4)}\n`;
+    } else if (locationError) {
+      submissionDetails += `Location: Could not be determined (${locationError})\n`;
     } else {
       submissionDetails += `Location: Not available.\n`;
     }
-
-    if (selectedHospitalNumber) {
-        const hospitalName = hospitals.find(h => h.number === selectedHospitalNumber)?.name || selectedHospitalNumber;
+    
+    if (selectedHospitalId) {
+        const hospitalName = hospitals.find(h => h.place_id === selectedHospitalId)?.name || selectedHospitalId;
         submissionDetails += `Selected Hospital for contact: ${hospitalName}\n`;
     }
     if (selectedAmbulanceNumber) {
@@ -350,25 +365,23 @@ export default function QuickSymptomSelector() {
           <div className="space-y-3">
             <div>
               <label htmlFor="hospital-select" className="text-sm font-medium text-muted-foreground flex items-center gap-1 mb-1">
-                <Hospital className="h-4 w-4"/> Nearby Hospitals
+                <Hospital className="h-4 w-4"/> Nearby Hospitals (30km Radius)
               </label>
-              <Select onValueChange={setSelectedHospitalNumber} value={selectedHospitalNumber || undefined} disabled={isSubmitting}>
+              <Select onValueChange={setSelectedHospitalId} value={selectedHospitalId || undefined} disabled={isSubmitting || isFetchingHospitals || hospitals.length === 0}>
                 <SelectTrigger id="hospital-select" className="w-full">
-                  <SelectValue placeholder="Select a hospital..." />
+                  <SelectValue placeholder={isFetchingHospitals ? "Finding hospitals..." : (locationError || "No location access") ? `Cannot fetch: ${locationError}` : "Select a hospital..."} />
                 </SelectTrigger>
                 <SelectContent>
                   {hospitals.map(hospital => (
-                    <SelectItem key={hospital.name} value={hospital.number}>
-                      {hospital.name} ({hospital.number})
+                    <SelectItem key={hospital.place_id} value={hospital.place_id}>
+                      <div className="flex flex-col">
+                        <span className="font-semibold">{hospital.name}</span>
+                        <span className="text-xs text-muted-foreground">{hospital.vicinity}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {selectedHospitalNumber && (
-                <Button onClick={() => handleCall(selectedHospitalNumber)} className="w-full mt-2 bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSubmitting}>
-                  <PhoneCall className="mr-2 h-4 w-4" /> Call Selected Hospital
-                </Button>
-              )}
             </div>
             <div>
               <label htmlFor="ambulance-select" className="text-sm font-medium text-muted-foreground flex items-center gap-1 mb-1">
@@ -411,4 +424,5 @@ export default function QuickSymptomSelector() {
     </Card>
   );
 }
+
 
