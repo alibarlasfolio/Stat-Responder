@@ -43,13 +43,29 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
           setEmergencyContacts(data.emergencyContacts || []);
           setMedicalInfo(data.medicalInfo || null);
         } else {
-          // If no document exists, create one with default empty values
-          await setDoc(userDocRef, { emergencyContacts: [], medicalInfo: null });
-          setEmergencyContacts([]);
-          setMedicalInfo(null);
+          // If no document exists, create one with default sample data
+          const defaultMedicalInfo: MedicalInfo = {
+            allergies: 'Penicillin',
+            medications: 'Aspirin 81mg',
+            conditions: 'Hypertension',
+          };
+          const defaultContact: EmergencyContact = {
+            id: 'sample-contact-1',
+            name: 'Jane Doe',
+            relationship: 'Spouse',
+            phoneNumber: '555-867-5309',
+          };
+          const initialData = {
+            emergencyContacts: [defaultContact],
+            medicalInfo: defaultMedicalInfo,
+          };
+          
+          await setDoc(userDocRef, initialData);
+          setEmergencyContacts(initialData.emergencyContacts);
+          setMedicalInfo(initialData.medicalInfo);
         }
       } catch (error) {
-        console.error("Error fetching user data:", error);
+        console.error("Error fetching or creating user data:", error);
         // Handle error state if needed
       } finally {
         setIsLoading(false);
