@@ -17,6 +17,8 @@ export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    // Connect to the default database instance.
+    // In a multi-database project, you can specify the database ID here.
     const db = getFirestore(app);
 
     enableIndexedDbPersistence(db)
