@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Progress } from "@/components/ui/progress";
-import { ClipboardList, Lightbulb, AlertTriangle, Mic, StopCircle, Loader2, Send, MessageSquareWarning, Hospital, Ambulance, PhoneCall } from 'lucide-react';
+import { ClipboardList, Lightbulb, AlertTriangle, Mic, StopCircle, Loader2, Send, MessageSquareWarning, Hospital, Ambulance, PhoneCall, MapPin } from 'lucide-react';
 import { getSymptomGuidance, type SymptomGuidanceOutput } from '@/ai/flows/symptom-guidance-flow';
 import { getNearbyHospitals, type Hospital as HospitalType } from '@/ai/flows/nearby-hospitals-flow';
 import { useToast } from '@/hooks/use-toast';
@@ -365,6 +365,13 @@ export default function QuickSymptomSelector() {
           <h4 className="text-md font-semibold text-primary flex items-center gap-2">
             <PhoneCall className="h-5 w-5"/> Connect with Local Services
           </h4>
+           <div className="text-xs text-muted-foreground flex items-center gap-2 p-2 rounded-md bg-secondary/30">
+            <MapPin className="h-4 w-4 shrink-0" />
+            {isFetchingHospitals && !currentLocation && <span>Getting your location...</span>}
+            {currentLocation && <span>Your Location: Lat: {currentLocation.latitude.toFixed(2)}, Lon: {currentLocation.longitude.toFixed(2)}</span>}
+            {locationError && <span className="text-destructive">{locationError}</span>}
+            {!isFetchingHospitals && !currentLocation && !locationError && <span>Location will be requested when you open the hospital dropdown.</span>}
+          </div>
           <div className="space-y-3">
             <div>
               <label htmlFor="hospital-select" className="text-sm font-medium text-muted-foreground flex items-center gap-1 mb-1">
