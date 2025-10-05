@@ -56,11 +56,11 @@ const getNearbyHospitalsFlow = ai.defineFlow(
         throw new Error(`Places API request failed with status: ${data.status}. ${data.error_message || ''}`);
       }
 
-      const hospitals = data.results.map((result: any) => ({
+      const hospitals: Hospital[] = data.results.map((result: any) => ({
         name: result.name,
         vicinity: result.vicinity,
         place_id: result.place_id,
-      }));
+      })).sort((a: Hospital, b: Hospital) => a.name.localeCompare(b.name));
 
       return { hospitals };
     } catch (error: any) {
