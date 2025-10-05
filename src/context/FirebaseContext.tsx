@@ -15,6 +15,11 @@ const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined
 export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
   const [firebase, setFirebase] = useState<FirebaseContextType | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     const initialize = async () => {
@@ -52,14 +57,23 @@ export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
 
   }, []);
 
-  if (isInitializing) {
-    // While initializing, you can show a loading spinner or a blank screen.
-    // This prevents children from trying to access a null Firebase context.
-    return (
-        <div className="flex items-center justify-center h-screen">
-            <div className="text-xl font-semibold">Initializing Firebase...</div>
-        </div>
-    );
+  if (!hasMounted || isInitializing) {
+    // While initializing or before client has mounted, render the children directly
+    // or a generic placeholder that is consistent on server and client.
+    // To avoid layout shifts, we can return null or a minimal loader.
+    // For this app, let's show a loading screen only after mount to avoid hydration mismatch.
+    if (hasMounted && isInitializing) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-xl font-semibold">Initializing Firebase...</div>
+            </div>
+        );
+    }
+    // On server render and initial client render, we need to return something.
+    // Returning children might cause downstream components to fail if they expect firebase.
+    // Returning a full-screen loader that is identical on server/client is safest.
+    // However, since the error is a mismatch, rendering null on first pass is also safe.
+    return null;
   }
   
   if (!firebase) {
