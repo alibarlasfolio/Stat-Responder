@@ -30,28 +30,34 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchData = async () => {
       if (!db) {
-        // Firebase is not initialized yet
+        // Firebase is not initialized yet, wait for it.
         return;
       }
       setIsLoading(true);
-      const userDocRef = doc(db, 'users', USER_ID);
-      const userDocSnap = await getDoc(userDocRef);
+      try {
+        const userDocRef = doc(db, 'users', USER_ID);
+        const userDocSnap = await getDoc(userDocRef);
 
-      if (userDocSnap.exists()) {
-        const data = userDocSnap.data();
-        setEmergencyContacts(data.emergencyContacts || []);
-        setMedicalInfo(data.medicalInfo || null);
-      } else {
-        // If no document exists, create one with default empty values
-        await setDoc(userDocRef, { emergencyContacts: [], medicalInfo: null });
-        setEmergencyContacts([]);
-        setMedicalInfo(null);
+        if (userDocSnap.exists()) {
+          const data = userDocSnap.data();
+          setEmergencyContacts(data.emergencyContacts || []);
+          setMedicalInfo(data.medicalInfo || null);
+        } else {
+          // If no document exists, create one with default empty values
+          await setDoc(userDocRef, { emergencyContacts: [], medicalInfo: null });
+          setEmergencyContacts([]);
+          setMedicalInfo(null);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        // Handle error state if needed
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     fetchData();
-  }, [db]);
+  }, [db]); // This effect now correctly depends on `db`
 
   const addEmergencyContact = useCallback(async (contact: Omit<EmergencyContact, 'id'>) => {
     if (!db) return;
