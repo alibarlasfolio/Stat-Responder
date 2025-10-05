@@ -30,7 +30,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchData = async () => {
       if (!db) {
-        // Firebase is not initialized yet, wait for it.
         return;
       }
       setIsLoading(true);
@@ -45,9 +44,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         } else {
           // If no document exists, create one with default sample data
           const defaultMedicalInfo: MedicalInfo = {
-            allergies: 'Penicillin',
-            medications: 'Aspirin 81mg',
-            conditions: 'Hypertension',
+            allergies: 'Penicillin, Nuts',
+            medications: 'Lisinopril 10mg daily',
+            conditions: 'Hypertension, Asthma',
           };
           const defaultContact: EmergencyContact = {
             id: 'sample-contact-1',
@@ -73,7 +72,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     };
 
     fetchData();
-  }, [db]); // This effect now correctly depends on `db`
+  }, [db]);
 
   const addEmergencyContact = useCallback(async (contact: Omit<EmergencyContact, 'id'>) => {
     if (!db) return;
