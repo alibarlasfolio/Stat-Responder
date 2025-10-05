@@ -3,8 +3,8 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { EmergencyContact, MedicalInfo } from '@/types';
-import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { useFirebase } from '@/context/FirebaseContext';
 
 // Hardcoded user for demonstration purposes. In a real app, this would be dynamic.
 const USER_ID = 'default-user';
@@ -22,12 +22,17 @@ interface UserDataContextType {
 const UserDataContext = createContext<UserDataContextType | undefined>(undefined);
 
 export const UserDataProvider = ({ children }: { children: ReactNode }) => {
+  const { db } = useFirebase();
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
   const [medicalInfo, setMedicalInfo] = useState<MedicalInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!db) {
+        // Firebase is not initialized yet
+        return;
+      }
       setIsLoading(true);
       const userDocRef = doc(db, 'users', USER_ID);
       const userDocSnap = await getDoc(userDocRef);
@@ -46,18 +51,20 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     };
 
     fetchData();
-  }, []);
+  }, [db]);
 
   const addEmergencyContact = useCallback(async (contact: Omit<EmergencyContact, 'id'>) => {
+    if (!db) return;
     const newContact = { ...contact, id: Date.now().toString() };
     const userDocRef = doc(db, 'users', USER_ID);
     await updateDoc(userDocRef, {
       emergencyContacts: arrayUnion(newContact)
     });
     setEmergencyContacts(prev => [...prev, newContact]);
-  }, []);
+  }, [db]);
 
   const updateEmergencyContact = useCallback(async (updatedContact: EmergencyContact) => {
+    if (!db) return;
     const userDocRef = doc(db, 'users', USER_ID);
     const userDocSnap = await getDoc(userDocRef);
     if (userDocSnap.exists()) {
@@ -66,9 +73,10 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       await setDoc(userDocRef, { emergencyContacts: updatedContacts }, { merge: true });
       setEmergencyContacts(updatedContacts);
     }
-  }, []);
+  }, [db]);
 
   const deleteEmergencyContact = useCallback(async (id: string) => {
+    if (!db) return;
     const userDocRef = doc(db, 'users', USER_ID);
     const userDocSnap = await getDoc(userDocRef);
      if (userDocSnap.exists()) {
@@ -81,13 +89,14 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         setEmergencyContacts(prev => prev.filter(c => c.id !== id));
       }
     }
-  }, []);
+  }, [db]);
 
   const updateMedicalInfo = useCallback(async (info: MedicalInfo) => {
+    if (!db) return;
     const userDocRef = doc(db, 'users', USER_ID);
     await setDoc(userDocRef, { medicalInfo: info }, { merge: true });
     setMedicalInfo(info);
-  }, []);
+  }, [db]);
 
   return (
     <UserDataContext.Provider value={{ emergencyContacts, medicalInfo, addEmergencyContact, updateEmergencyContact, deleteEmergencyContact, updateMedicalInfo, isLoading }}>
