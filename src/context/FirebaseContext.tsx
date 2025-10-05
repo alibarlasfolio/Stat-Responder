@@ -6,14 +6,14 @@ import { getFirestore, enableIndexedDbPersistence, type Firestore } from 'fireba
 import { firebaseConfig } from '@/lib/firebase-config';
 
 interface FirebaseContextType {
-  app: FirebaseApp | null;
-  db: Firestore | null;
+  app: FirebaseApp;
+  db: Firestore;
 }
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
 
 export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
-  const [firebase, setFirebase] = useState<FirebaseContextType>({ app: null, db: null });
+  const [firebase, setFirebase] = useState<FirebaseContextType | null>(null);
 
   useEffect(() => {
     const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -32,6 +32,11 @@ export const FirebaseProvider = ({ children }: { children: ReactNode }) => {
     setFirebase({ app, db });
 
   }, []);
+
+  if (!firebase) {
+    // Do not render children until firebase is initialized
+    return null; 
+  }
 
   return (
     <FirebaseContext.Provider value={firebase}>
