@@ -65,6 +65,7 @@ export default function QuickSymptomSelector() {
 
   const [hospitals, setHospitals] = useState<HospitalType[]>([]);
   const [isFetchingHospitals, setIsFetchingHospitals] = useState(false);
+  const [hasAttemptedHospitalFetch, setHasAttemptedHospitalFetch] = useState(false);
   const [selectedHospitalId, setSelectedHospitalId] = useState<string | null>(null);
   const [selectedAmbulanceNumber, setSelectedAmbulanceNumber] = useState<string | null>(null);
 
@@ -72,47 +73,49 @@ export default function QuickSymptomSelector() {
   const { toast } = useToast();
   const { medicalInfo, emergencyContacts } = useUserData();
 
-  const fetchHospitals = useCallback(async (location: UserLocation) => {
-    setIsFetchingHospitals(true);
-    try {
-      const result = await getNearbyHospitals({
-        latitude: location.latitude,
-        longitude: location.longitude,
-      });
-      setHospitals(result.hospitals);
-      if (result.hospitals.length === 0) {
-        toast({ variant: "default", title: "Nearby Hospitals", description: "No hospitals found within a 30km radius." });
-      }
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Hospital Search Error", description: `Could not fetch hospitals: ${e.message}` });
-    } finally {
-      setIsFetchingHospitals(false);
-    }
-  }, [toast]);
-
-
-  const fetchLocation = useCallback(() => {
-    if (!('geolocation' in navigator)) {
-      setLocationError('Geolocation is not supported.');
+  const handleHospitalFetch = useCallback(async () => {
+    if (hospitals.length > 0 || isFetchingHospitals || hasAttemptedHospitalFetch) {
       return;
     }
+
+    setHasAttemptedHospitalFetch(true);
+    setIsFetchingHospitals(true);
+    setLocationError(null);
+
+    if (!('geolocation' in navigator)) {
+      setLocationError('Geolocation is not supported.');
+      setIsFetchingHospitals(false);
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const loc = { latitude: position.coords.latitude, longitude: position.coords.longitude };
         setCurrentLocation(loc);
-        setLocationError(null);
-        fetchHospitals(loc); 
+        try {
+          const result = await getNearbyHospitals({
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+          });
+          setHospitals(result.hospitals);
+          if (result.hospitals.length === 0) {
+            setLocationError("No hospitals found within a 30km radius.");
+          }
+        } catch (e: any) {
+          setLocationError(`Could not fetch hospitals: ${e.message}`);
+          toast({ variant: "destructive", title: "Hospital Search Error", description: `Could not fetch hospitals: ${e.message}` });
+        } finally {
+          setIsFetchingHospitals(false);
+        }
       },
       (error) => {
-        setLocationError(`Location error: ${error.message}`);
+        setLocationError(`Location access denied or failed: ${error.message}`);
         setCurrentLocation(null);
+        setIsFetchingHospitals(false);
       }
     );
-  }, [fetchHospitals]);
+  }, [hospitals.length, isFetchingHospitals, hasAttemptedHospitalFetch, toast]);
 
-  useEffect(() => {
-    fetchLocation();
-  }, [fetchLocation]);
 
   useEffect(() => {
     return () => {
@@ -367,11 +370,25 @@ export default function QuickSymptomSelector() {
               <label htmlFor="hospital-select" className="text-sm font-medium text-muted-foreground flex items-center gap-1 mb-1">
                 <Hospital className="h-4 w-4"/> Nearby Hospitals (30km Radius)
               </label>
-              <Select onValueChange={setSelectedHospitalId} value={selectedHospitalId || undefined} disabled={isSubmitting || isFetchingHospitals || hospitals.length === 0}>
+              <Select 
+                onValueChange={setSelectedHospitalId} 
+                value={selectedHospitalId || undefined} 
+                disabled={isSubmitting || isFetchingHospitals}
+                onOpenChange={(isOpen) => isOpen && handleHospitalFetch()}
+              >
                 <SelectTrigger id="hospital-select" className="w-full">
-                  <SelectValue placeholder={isFetchingHospitals ? "Finding hospitals..." : (locationError || "No location access") ? `Cannot fetch: ${locationError}` : "Select a hospital..."} />
+                   <SelectValue placeholder={
+                      isFetchingHospitals 
+                        ? "Finding hospitals..." 
+                        : locationError 
+                        ? locationError 
+                        : (hospitals.length === 0 && hasAttemptedHospitalFetch)
+                        ? "No hospitals found"
+                        : "Select a hospital..."
+                    } />
                 </SelectTrigger>
                 <SelectContent>
+                   {isFetchingHospitals && <div className="p-2 text-center text-sm text-muted-foreground">Loading...</div>}
                   {hospitals.map(hospital => (
                     <SelectItem key={hospital.place_id} value={hospital.place_id}>
                       <div className="flex flex-col">
@@ -380,6 +397,7 @@ export default function QuickSymptomSelector() {
                       </div>
                     </SelectItem>
                   ))}
+                  {locationError && <div className="p-2 text-center text-sm text-destructive">{locationError}</div>}
                 </SelectContent>
               </Select>
             </div>
@@ -424,5 +442,3 @@ export default function QuickSymptomSelector() {
     </Card>
   );
 }
-
-
